@@ -22,3 +22,53 @@ app.use('/api/transactions', transactionRoutes);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+// In backend/server.js add this temporary route
+app.get('/setup-admin', async (req, res) => {
+    try {
+      // Create a simple password hash
+      const salt = await bcrypt.genSalt(10);
+      const passwordHash = await bcrypt.hash('password123', salt);
+      
+      console.log('Generated password hash:', passwordHash);
+      
+      // Check if admin exists
+      const [existingUsers] = await pool.query(
+        'SELECT * FROM user_accounts WHERE username = ?', 
+        ['admin']
+      );
+      
+      if (existingUsers.length > 0) {
+        // Update existing admin
+        await pool.query(
+          'UPDATE user_accounts SET password_hash = ? WHERE username = ?',
+          [passwordHash, 'admin']
+        );
+        res.send('Admin password updated');
+      } else {
+        // Check if student exists
+        const [existingStudents] = await pool.query(
+          'SELECT * FROM students WHERE student_id = ?',
+          ['ADMIN001']
+        );
+        
+        if (existingStudents.length === 0) {
+          // Create student
+          await pool.query(
+            'INSERT INTO students (student_id, name, department, email, status) VALUES (?, ?, ?, ?, ?)',
+            ['ADMIN001', 'System Admin', 'IT', 'admin@library.com', 'active']
+          );
+        }
+        
+        // Create admin user
+        await pool.query(
+          'INSERT INTO user_accounts (student_id, username, password_hash, role) VALUES (?, ?, ?, ?)',
+          ['ADMIN001', 'admin', passwordHash, 'admin']
+        );
+        
+        res.send('Admin user created');
+      }
+    } catch (error) {
+      console.error('Setup admin error:', error);
+      res.status(500).send('Error setting up admin');
+    }
+  });

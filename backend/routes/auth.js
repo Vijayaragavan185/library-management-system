@@ -1,3 +1,4 @@
+// backend/routes/auth.js - Update to include debugging
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
@@ -8,6 +9,7 @@ const pool = require('../config/db');
 router.post('/login', async (req, res) => {
   try {
     const { username, password } = req.body;
+    console.log(`Login attempt for username: ${username}`);
     
     // Get user from database
     const [users] = await pool.query(
@@ -15,23 +17,30 @@ router.post('/login', async (req, res) => {
       [username]
     );
     
+    console.log(`Found ${users.length} users matching username`);
+    
     if (users.length === 0) {
+      console.log('No matching user found');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
     const user = users[0];
     
     // Check password
+    console.log(`Comparing password with hash: ${user.password_hash}`);
     const isMatch = await bcrypt.compare(password, user.password_hash);
     
+    console.log(`Password match result: ${isMatch}`);
+    
     if (!isMatch) {
+      console.log('Password does not match');
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
     // Create JWT token
     const token = jwt.sign(
       { id: user.account_id, role: user.role },
-      process.env.JWT_SECRET,
+      process.env.JWT_SECRET || 'defaultsecretkey',
       { expiresIn: '8h' }
     );
     
@@ -41,6 +50,7 @@ router.post('/login', async (req, res) => {
       [user.account_id]
     );
     
+    console.log('Login successful, returning token');
     res.json({
       token,
       user: {
@@ -52,7 +62,7 @@ router.post('/login', async (req, res) => {
     });
     
   } catch (error) {
-    console.error(error);
+    console.error('Login error:', error);
     res.status(500).json({ message: 'Server error' });
   }
 });
