@@ -1,13 +1,13 @@
-// src/components/students/AddStudent.js
+// src/components/resources/AddResource.js
 import React, { useState } from 'react';
 import api from '../../services/api';
 
-const AddStudent = ({ onStudentAdded }) => {
+const AddResource = ({ onResourceAdded }) => {
   const [formData, setFormData] = useState({
-    student_id: '',
-    name: '',
-    department: '',
-    email: ''
+    resource_id: '',
+    title: '',
+    type: 'book',
+    location_code: ''
   });
   
   const [error, setError] = useState('');
@@ -29,17 +29,17 @@ const AddStudent = ({ onStudentAdded }) => {
     setLoading(true);
 
     try {
-      await api.post('/students', formData);
-      setSuccess('Student added successfully!');
+      await api.post('/resources', formData);
+      setSuccess('Resource added successfully!');
       setFormData({
-        student_id: '',
-        name: '',
-        department: '',
-        email: ''
+        resource_id: '',
+        title: '',
+        type: 'book',
+        location_code: ''
       });
-      if (onStudentAdded) onStudentAdded();
+      if (onResourceAdded) onResourceAdded();
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to add student');
+      setError(err.response?.data?.message || 'Failed to add resource');
       console.error(err);
     } finally {
       setLoading(false);
@@ -47,62 +47,64 @@ const AddStudent = ({ onStudentAdded }) => {
   };
 
   return (
-    <div className="add-student-form">
-      <h2>Add New Student</h2>
+    <div className="add-resource-form">
+      <h2>Add New Resource</h2>
       
       {error && <div className="error-message">{error}</div>}
       {success && <div className="success-message">{success}</div>}
       
       <form onSubmit={handleSubmit}>
         <div className="form-group">
-          <label htmlFor="student_id">Student ID</label>
+          <label htmlFor="resource_id">Resource ID</label>
           <input
             type="text"
-            id="student_id"
-            name="student_id"
-            value={formData.student_id}
+            id="resource_id"
+            name="resource_id"
+            value={formData.resource_id}
             onChange={handleChange}
             required
-            placeholder="e.g., S12345"
+            placeholder="e.g., B001, DVD034"
           />
         </div>
         
         <div className="form-group">
-          <label htmlFor="name">Full Name</label>
+          <label htmlFor="title">Title</label>
           <input
             type="text"
-            id="name"
-            name="name"
-            value={formData.name}
+            id="title"
+            name="title"
+            value={formData.title}
             onChange={handleChange}
             required
-            placeholder="Student's full name"
+            placeholder="Resource title"
           />
         </div>
         
         <div className="form-group">
-          <label htmlFor="department">Department</label>
-          <input
-            type="text"
-            id="department"
-            name="department"
-            value={formData.department}
+          <label htmlFor="type">Type</label>
+          <select
+            id="type"
+            name="type"
+            value={formData.type}
             onChange={handleChange}
             required
-            placeholder="e.g., Computer Science"
-          />
+          >
+            <option value="book">Book</option>
+            <option value="journal">Journal</option>
+            <option value="equipment">Equipment</option>
+          </select>
         </div>
         
         <div className="form-group">
-          <label htmlFor="email">Email</label>
+          <label htmlFor="location_code">Location Code</label>
           <input
-            type="email"
-            id="email"
-            name="email"
-            value={formData.email}
+            type="text"
+            id="location_code"
+            name="location_code"
+            value={formData.location_code}
             onChange={handleChange}
             required
-            placeholder="student@example.com"
+            placeholder="e.g., S-12-B, D-05-A"
           />
         </div>
         
@@ -111,11 +113,11 @@ const AddStudent = ({ onStudentAdded }) => {
           className="btn-submit"
           disabled={loading}
         >
-          {loading ? 'Adding...' : 'Add Student'}
+          {loading ? 'Adding...' : 'Add Resource'}
         </button>
       </form>
     </div>
   );
 };
 
-export default AddStudent;
+export default AddResource;

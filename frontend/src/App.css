@@ -381,3 +381,78 @@ body {
   background-color: #aaa;
   cursor: not-allowed;
 }
+
+/* Add this to your App.css file */
+
+/* Circulation Page */
+.circulation-page h1 {
+  margin-bottom: 1.5rem;
+}
+
+.forms-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+@media (max-width: 992px) {
+  .forms-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.transactions-section {
+  background-color: white;
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* Additional Status Badges */
+.status-badge.borrowed {
+  background-color: #e3f2fd;
+  color: #1976d2;
+}
+
+.status-badge.returned {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.overdue {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.status-badge.available {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.maintenance {
+  background-color: #fff8e1;
+  color: #f57f17;
+}
+
+/* Form Select Styling */
+select {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+select:focus {
+  outline: none;
+  border-color: #1a73e8;
+}

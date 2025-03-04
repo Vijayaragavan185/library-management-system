@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 
-const StudentsList = () => {
+const StudentsList = ({ onRefresh }) => {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -10,17 +10,20 @@ const StudentsList = () => {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
+        setLoading(true);
         const response = await api.get('/students');
         setStudents(response.data);
-        setLoading(false);
+        setError(null);
       } catch (err) {
         setError('Failed to fetch students data');
+        console.error(err);
+      } finally {
         setLoading(false);
       }
     };
 
     fetchStudents();
-  }, []);
+  }, [onRefresh]);
 
   if (loading) return <div>Loading students...</div>;
   if (error) return <div className="error-message">{error}</div>;

@@ -1,14 +1,14 @@
 // src/pages/Students.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import StudentsList from '../components/students/StudentsList';
 import AddStudent from '../components/students/AddStudent';
 
 const Students = () => {
-  const [refreshList, setRefreshList] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(false);
   
   const handleStudentAdded = () => {
-    setRefreshList(prev => !prev);
+    setRefreshTrigger(prev => !prev);
   };
   
   return (
@@ -18,7 +18,7 @@ const Students = () => {
         
         <div className="content-grid">
           <div className="main-content">
-            <StudentsList key={refreshList ? 'refresh' : 'initial'} />
+            <StudentsList onRefresh={refreshTrigger} />
           </div>
           
           <div className="side-content">
