@@ -72,3 +72,31 @@ app.get('/setup-admin', async (req, res) => {
       res.status(500).send('Error setting up admin');
     }
   });
+
+  // In backend/server.js add this temporary route
+const bcrypt = require('bcrypt'); // Make sure this is at the top of your file
+
+app.get('/reset-admin-password', async (req, res) => {
+  try {
+    // Create a simple password hash for "password123"
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash('password123', salt);
+    
+    console.log('Generated new password hash:', passwordHash);
+    
+    // Update admin password
+    const [result] = await pool.query(
+      'UPDATE user_accounts SET password_hash = ? WHERE username = ?',
+      [passwordHash, 'admin']
+    );
+    
+    if (result.affectedRows > 0) {
+      res.send('Admin password reset successfully. Try logging in with "password123"');
+    } else {
+      res.send('Admin user not found. Please check your database.');
+    }
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).send('Error resetting admin password');
+  }
+});
