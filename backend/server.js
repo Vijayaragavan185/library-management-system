@@ -4,6 +4,9 @@ const authRoutes = require('./routes/auth');
 const studentRoutes = require('./routes/students');
 const resourceRoutes = require('./routes/resources');
 const transactionRoutes = require('./routes/transactions');
+const finesRoutes = require('./routes/fines');
+const categoriesRoutes = require('./routes/categories');
+
 require('dotenv').config();
 
 const app = express();
@@ -18,6 +21,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/students', studentRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/transactions', transactionRoutes);
+app.use('/api/fines', finesRoutes);
+app.use('/api/categories', categoriesRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

@@ -9,6 +9,8 @@ import Dashboard from '../pages/Dashboard';
 import Students from '../pages/Students';
 import Resources from '../pages/Resources';
 import Circulation from '../pages/Circulation';
+import Categories from '../pages/Categories';
+import Fines from '../pages/Fines';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -50,6 +52,18 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Circulation />
           </ProtectedRoute>
+        } />
+
+        <Route path="/categories" element={
+        <ProtectedRoute>
+            <Categories />
+        </ProtectedRoute>
+        } />
+
+        <Route path="/fines" element={
+        <ProtectedRoute>
+            <Fines />
+        </ProtectedRoute>
         } />
         
         <Route path="*" element={<Navigate to="/dashboard" />} />

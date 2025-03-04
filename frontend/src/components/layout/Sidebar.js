@@ -18,22 +18,29 @@ const Sidebar = () => {
         <p className="user-role">{currentUser?.role}</p>
       </div>
       
-      <nav className="sidebar-nav">
+        <nav className="sidebar-nav">
         <ul>
-          <li className={isActive('/dashboard')}>
+
+            <li className={isActive('/dashboard')}>
             <Link to="/dashboard">Dashboard</Link>
-          </li>
-          <li className={isActive('/students')}>
+            </li>
+            <li className={isActive('/students')}>
             <Link to="/students">Students</Link>
-          </li>
-          <li className={isActive('/resources')}>
+            </li>
+            <li className={isActive('/resources')}>
             <Link to="/resources">Resources</Link>
-          </li>
-          <li className={isActive('/circulation')}>
+            </li>
+            <li className={isActive('/circulation')}>
             <Link to="/circulation">Circulation</Link>
-          </li>
+            </li>
+            <li className={isActive('/categories')}>
+            <Link to="/categories">Categories</Link>
+            </li>
+            <li className={isActive('/fines')}>
+            <Link to="/fines">Fines</Link>
+            </li>            
         </ul>
-      </nav>
+        </nav>
     </div>
   );
 };

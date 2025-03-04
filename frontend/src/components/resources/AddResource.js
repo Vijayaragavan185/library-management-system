@@ -1,18 +1,33 @@
 // src/components/resources/AddResource.js
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../../services/api';
 
 const AddResource = ({ onResourceAdded }) => {
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
     resource_id: '',
     title: '',
     type: 'book',
-    location_code: ''
+    location_code: '',
+    category_id: ''
   });
   
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await api.get('/categories');
+        setCategories(response.data);
+      } catch (err) {
+        console.error('Failed to load categories', err);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -35,7 +50,8 @@ const AddResource = ({ onResourceAdded }) => {
         resource_id: '',
         title: '',
         type: 'book',
-        location_code: ''
+        location_code: '',
+        category_id: ''
       });
       if (onResourceAdded) onResourceAdded();
     } catch (err) {
@@ -106,6 +122,23 @@ const AddResource = ({ onResourceAdded }) => {
             required
             placeholder="e.g., S-12-B, D-05-A"
           />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="category_id">Category (Optional)</label>
+          <select
+            id="category_id"
+            name="category_id"
+            value={formData.category_id}
+            onChange={handleChange}
+          >
+            <option value="">-- Select Category --</option>
+            {categories.map(category => (
+              <option key={category.category_id} value={category.category_id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </div>
         
         <button 
