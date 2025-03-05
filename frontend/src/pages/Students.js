@@ -1,4 +1,4 @@
-// src/pages/Students.js - Update to include pending approvals
+// src/pages/Students.js
 import React, { useState } from 'react';
 import Layout from '../components/layout/Layout';
 import StudentsList from '../components/students/StudentsList';

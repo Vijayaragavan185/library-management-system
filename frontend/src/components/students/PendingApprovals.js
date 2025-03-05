@@ -49,7 +49,7 @@ const PendingApprovals = () => {
 
   return (
     <div className="pending-approvals">
-      <h2>Pending Student Approvals</h2>
+      <h2>Student Approvals</h2>
       
       {pendingStudents.length === 0 ? (
         <p>No pending approvals at this time.</p>
@@ -61,6 +61,7 @@ const PendingApprovals = () => {
               <th>Name</th>
               <th>Department</th>
               <th>Email</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -71,19 +72,28 @@ const PendingApprovals = () => {
                 <td>{student.name}</td>
                 <td>{student.department}</td>
                 <td>{student.email}</td>
+                <td>
+                  <span className={`status-badge ${student.status}`}>
+                    {student.status}
+                  </span>
+                </td>
                 <td className="actions">
-                  <button 
-                    className="btn-approve"
-                    onClick={() => handleApprove(student.student_id)}
-                  >
-                    Approve
-                  </button>
-                  <button 
-                    className="btn-reject"
-                    onClick={() => handleReject(student.student_id)}
-                  >
-                    Reject
-                  </button>
+                  {student.status !== 'active' && (
+                    <button 
+                      className="btn-approve"
+                      onClick={() => handleApprove(student.student_id)}
+                    >
+                      Approve
+                    </button>
+                  )}
+                  {student.status !== 'suspended' && (
+                    <button 
+                      className="btn-reject"
+                      onClick={() => handleReject(student.student_id)}
+                    >
+                      Reject
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
