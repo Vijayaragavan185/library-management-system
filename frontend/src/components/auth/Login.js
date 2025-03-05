@@ -16,14 +16,22 @@ const Login = () => {
     setLoading(true);
     
     try {
-      await AuthService.login(username, password);
-      navigate('/dashboard');
+      const response = await AuthService.login(username, password);
+      
+      // Redirect based on user role
+      if (response.user.role === 'student') {
+        navigate('/student/dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to login');
     } finally {
       setLoading(false);
     }
   };
+
+
 
   return (
     <div className="login-container">

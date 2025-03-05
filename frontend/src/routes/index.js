@@ -12,6 +12,12 @@ import Circulation from '../pages/Circulation';
 import Categories from '../pages/Categories';
 import Fines from '../pages/Fines';
 
+import StudentDashboard from '../pages/student/StudentDashboard';
+import BrowseResources from '../pages/student/BrowseResources';
+import CheckoutHistory from '../pages/student/CheckoutHistory';
+import StudentFines from '../pages/student/StudentFines';
+import StudentProfile from '../pages/student/StudentProfile';
+
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = AuthService.isAuthenticated();
@@ -64,6 +70,36 @@ const AppRoutes = () => {
         <ProtectedRoute>
             <Fines />
         </ProtectedRoute>
+        } />
+
+        <Route path="/student/dashboard" element={
+          <ProtectedRoute>
+            <StudentDashboard />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/student/browse" element={
+          <ProtectedRoute>
+            <BrowseResources />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/student/history" element={
+          <ProtectedRoute>
+            <CheckoutHistory />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/student/fines" element={
+          <ProtectedRoute>
+            <StudentFines />
+          </ProtectedRoute>
+        } />
+
+        <Route path="/student/profile" element={
+          <ProtectedRoute>
+            <StudentProfile />
+          </ProtectedRoute>
         } />
         
         <Route path="*" element={<Navigate to="/dashboard" />} />

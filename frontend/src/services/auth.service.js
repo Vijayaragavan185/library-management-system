@@ -4,7 +4,8 @@ import api from './api';
 const AuthService = {
   login: async (username, password) => {
     try {
-      const response = await api.post('/auth/login', { username, password });
+      // Use the simple login endpoint for testing
+      const response = await api.post('/auth/simple-login', { username, password });
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -30,5 +31,6 @@ const AuthService = {
     return !!localStorage.getItem('token');
   }
 };
+
 
 export default AuthService;

@@ -91,4 +91,21 @@ router.post('/return', async (req, res) => {
   }
 });
 
+router.get('/student/:id', async (req, res) => {
+  try {
+    const [transactions] = await pool.query(`
+      SELECT t.*, r.title as resource_title 
+      FROM transactions t
+      JOIN resources r ON t.resource_id = r.resource_id
+      WHERE t.student_id = ?
+      ORDER BY t.checkout_time DESC
+    `, [req.params.id]);
+    
+    res.json(transactions);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
 module.exports = router;
