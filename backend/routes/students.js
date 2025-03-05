@@ -14,14 +14,15 @@ router.get('/', async (req, res) => {
 });
 
 // Get pending students - place this BEFORE the /:id route to prevent confusion
+// Get students (including those registered recently)
 router.get('/pending', async (req, res) => {
   try {
-    // For demonstration, get all students with their account info
+    // Modify query to not use ua.created_at
     const [students] = await pool.query(
-      `SELECT s.*, ua.created_at, ua.username 
+      `SELECT s.*, ua.username 
        FROM students s
        JOIN user_accounts ua ON s.student_id = ua.student_id
-       ORDER BY ua.created_at DESC
+       ORDER BY ua.last_login DESC  /* using last_login instead of created_at */
        LIMIT 10`
     );
     res.json(students);
