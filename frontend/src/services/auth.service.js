@@ -2,6 +2,7 @@
 import api from './api';
 
 const AuthService = {
+  // src/services/auth.service.js
   login: async (username, password) => {
     try {
       // Use the simple login endpoint for testing

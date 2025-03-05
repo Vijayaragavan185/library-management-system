@@ -189,5 +189,79 @@ router.get('/me', async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 });
+// backend/routes/auth.js - Add this registration route
+// Improved error handling for the registration route
+router.post('/register', async (req, res) => {
+  try {
+    const { student_id, name, email, department, username, password } = req.body;
+    
+    console.log('Registration attempt with data:', { student_id, name, email, department, username });
+    
+    // Validate required fields
+    if (!student_id || !name || !email || !department || !username || !password) {
+      return res.status(400).json({ 
+        message: 'All fields are required',
+        missing: Object.entries({ student_id, name, email, department, username, password })
+          .filter(([_, value]) => !value)
+          .map(([key]) => key)
+      });
+    }
+    
+    // Check if student_id already exists
+    const [existingStudents] = await pool.query(
+      'SELECT * FROM students WHERE student_id = ?',
+      [student_id]
+    );
+    
+    if (existingStudents.length > 0) {
+      return res.status(400).json({ message: 'Student ID already registered' });
+    }
+    
+    // Check if username already exists
+    const [existingUsers] = await pool.query(
+      'SELECT * FROM user_accounts WHERE username = ?',
+      [username]
+    );
+    
+    if (existingUsers.length > 0) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+    
+    // Create student record
+    await pool.query(
+      'INSERT INTO students (student_id, name, department, email, status) VALUES (?, ?, ?, ?, ?)',
+      [student_id, name, department, email, 'pending']
+    );
+    
+    // Hash password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+    
+    // Create user account
+    await pool.query(
+      'INSERT INTO user_accounts (student_id, username, password_hash, role) VALUES (?, ?, ?, ?)',
+      [student_id, username, passwordHash, 'student']
+    );
+    
+    console.log(`Registration successful for student: ${student_id}, username: ${username}`);
+    
+    res.status(201).json({ 
+      message: 'Registration successful. Please wait for admin approval.' 
+    });
+    
+  } catch (error) {
+    console.error('Registration error details:', error.message, error.stack);
+    
+    // Check for specific MySQL errors
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ message: 'A user with this ID or username already exists' });
+    }
+    
+    res.status(500).json({ 
+      message: 'Server error during registration',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
 
 module.exports = router;

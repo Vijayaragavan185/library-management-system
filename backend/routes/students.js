@@ -49,4 +49,82 @@ router.post('/', async (req, res) => {
   }
 });
 
+
+// Get pending students
+router.get('/pending', async (req, res) => {
+  try {
+    const [students] = await pool.query(
+      'SELECT * FROM students WHERE status = ?',
+      ['pending']
+    );
+    res.json(students);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Approve a student
+router.patch('/:id/approve', async (req, res) => {
+  try {
+    await pool.query(
+      'UPDATE students SET status = ? WHERE student_id = ?',
+      ['active', req.params.id]
+    );
+    res.json({ message: 'Student approved successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Reject a student
+router.patch('/:id/reject', async (req, res) => {
+  try {
+    // First get the student to check if they exist
+    const [students] = await pool.query(
+      'SELECT * FROM students WHERE student_id = ?',
+      [req.params.id]
+    );
+    
+    if (students.length === 0) {
+      return res.status(404).json({ message: 'Student not found' });
+    }
+    
+    // Update student status
+    await pool.query(
+      'UPDATE students SET status = ? WHERE student_id = ?',
+      ['rejected', req.params.id]
+    );
+    
+    // Delete associated user account (optional, based on your requirements)
+    await pool.query(
+      'DELETE FROM user_accounts WHERE student_id = ?',
+      [req.params.id]
+    );
+    
+    res.json({ message: 'Student rejected successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+// Get pending students
+// Get students (including those registered recently)
+router.get('/pending', async (req, res) => {
+  try {
+    // For demonstration, get all students
+    const [students] = await pool.query(
+      `SELECT s.*, ua.created_at, ua.username
+       FROM students s
+       JOIN user_accounts ua ON s.student_id = ua.student_id
+       ORDER BY ua.created_at DESC
+       LIMIT 10`
+    );
+    res.json(students);
+  } catch (error) {
+    console.error('Error fetching pending students:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
 module.exports = router;

@@ -11,6 +11,7 @@ import Resources from '../pages/Resources';
 import Circulation from '../pages/Circulation';
 import Categories from '../pages/Categories';
 import Fines from '../pages/Fines';
+import Register from '../components/auth/Register';
 
 import StudentDashboard from '../pages/student/StudentDashboard';
 import BrowseResources from '../pages/student/BrowseResources';
@@ -101,6 +102,7 @@ const AppRoutes = () => {
             <StudentProfile />
           </ProtectedRoute>
         } />
+        <Route path="/register" element={<Register />} />
         
         <Route path="*" element={<Navigate to="/dashboard" />} />
       </Routes>

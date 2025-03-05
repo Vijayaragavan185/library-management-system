@@ -1,6 +1,6 @@
 // src/components/auth/Login.js
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import AuthService from '../../services/auth.service';
 
 const Login = () => {
@@ -57,6 +57,7 @@ const Login = () => {
               required 
             />
           </div>
+
           <button 
             type="submit" 
             className="login-button" 
@@ -64,6 +65,10 @@ const Login = () => {
           >
             {loading ? 'Logging in...' : 'Login'}
           </button>
+
+          <div className="auth-links">
+            Don't have an account? <Link to="/register">Register here</Link>
+          </div>
         </form>
       </div>
     </div>
