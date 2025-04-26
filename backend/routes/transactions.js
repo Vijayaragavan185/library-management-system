@@ -6,10 +6,13 @@ const pool = require('../config/db');
 router.get('/', async (req, res) => {
   try {
     const [transactions] = await pool.query(`
-      SELECT t.*, s.name as student_name, r.title as resource_title 
+      SELECT t.transaction_id, t.due_time, t.return_time, 
+             tm.checkout_time, tm.student_id, tm.resource_id,
+             s.name as student_name, r.title as resource_title
       FROM transactions t
-      JOIN students s ON t.student_id = s.student_id
-      JOIN resources r ON t.resource_id = r.resource_id
+      JOIN transaction_mapping tm ON t.transaction_id = tm.transaction_id
+      JOIN students s ON tm.student_id = s.student_id
+      JOIN resources r ON tm.resource_id = r.resource_id
     `);
     res.json(transactions);
   } catch (error) {
@@ -150,13 +153,14 @@ router.post('/return', async (req, res) => {
 router.get('/student/:id', async (req, res) => {
   try {
     const [transactions] = await pool.query(`
-      SELECT t.*, r.title as resource_title 
+      SELECT t.transaction_id, t.due_time, t.return_time, 
+             tm.checkout_time, r.title as resource_title, r.resource_id
       FROM transactions t
-      JOIN resources r ON t.resource_id = r.resource_id
-      WHERE t.student_id = ?
-      ORDER BY t.checkout_time DESC
+      JOIN transaction_mapping tm ON t.transaction_id = tm.transaction_id
+      JOIN resources r ON tm.resource_id = r.resource_id
+      WHERE tm.student_id = ?
+      ORDER BY tm.checkout_time DESC
     `, [req.params.id]);
-    
     res.json(transactions);
   } catch (error) {
     console.error(error);
