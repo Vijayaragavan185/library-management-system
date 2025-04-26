@@ -23,4 +23,8 @@
   "devDependencies": {
     "nodemon": "^3.1.9"
   }
+  "scripts": {
+  "backup": "node scripts/backup.js"
+}
+
 }
