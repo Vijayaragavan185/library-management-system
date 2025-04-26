@@ -19,41 +19,97 @@ router.get('/', async (req, res) => {
 });
 
 // Check out a resource
+// router.post('/checkout', async (req, res) => {
+//   try {
+//     const { student_id, resource_id, due_days = 14 } = req.body;
+    
+//     // Check if resource is available
+//     const [resources] = await pool.query(
+//       'SELECT * FROM resources WHERE resource_id = ? AND status = ?',
+//       [resource_id, 'available']
+//     );
+    
+//     if (resources.length === 0) {
+//       return res.status(400).json({ message: 'Resource is not available' });
+//     }
+    
+//     // Create transaction
+//     const dueDate = new Date();
+//     dueDate.setDate(dueDate.getDate() + due_days);
+    
+//     await pool.query(
+//       'INSERT INTO transactions (student_id, resource_id, checkout_time, due_time) VALUES (?, ?, NOW(), ?)',
+//       [student_id, resource_id, dueDate]
+//     );
+    
+//     // Update resource status
+//     await pool.query(
+//       'UPDATE resources SET status = ? WHERE resource_id = ?',
+//       ['borrowed', resource_id]
+//     );
+    
+//     res.status(201).json({ message: 'Resource checked out successfully' });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ message: 'Server error' });
+//   }
+// });
+const { withTransaction } = require('../utils/transactionHelper');
+
+// Check out a resource
 router.post('/checkout', async (req, res) => {
   try {
     const { student_id, resource_id, due_days = 14 } = req.body;
     
-    // Check if resource is available
-    const [resources] = await pool.query(
-      'SELECT * FROM resources WHERE resource_id = ? AND status = ?',
-      [resource_id, 'available']
-    );
+    const result = await withTransaction(async (connection) => {
+      // Check if resource is available (with FOR UPDATE to lock the row)
+      const [resources] = await connection.query(
+        'SELECT * FROM resources WHERE resource_id = ? AND status = ? FOR UPDATE',
+        [resource_id, 'available']
+      );
+      
+      if (resources.length === 0) {
+        throw new Error('Resource is not available');
+      }
+      
+      // Create transaction
+      const dueDate = new Date();
+      dueDate.setDate(dueDate.getDate() + due_days);
+      
+      // Insert transaction record and get the ID
+      const [transactionResult] = await connection.query(
+        'INSERT INTO transactions (due_time) VALUES (?)',
+        [dueDate]
+      );
+      
+      const transaction_id = transactionResult.insertId;
+      
+      // Create mapping entry
+      await connection.query(
+        'INSERT INTO transaction_mapping (student_id, resource_id, checkout_time, transaction_id) VALUES (?, ?, NOW(), ?)',
+        [student_id, resource_id, transaction_id]
+      );
+      
+      // Update resource status
+      await connection.query(
+        'UPDATE resources SET status = ? WHERE resource_id = ?',
+        ['borrowed', resource_id]
+      );
+      
+      return { transaction_id };
+    });
     
-    if (resources.length === 0) {
-      return res.status(400).json({ message: 'Resource is not available' });
-    }
-    
-    // Create transaction
-    const dueDate = new Date();
-    dueDate.setDate(dueDate.getDate() + due_days);
-    
-    await pool.query(
-      'INSERT INTO transactions (student_id, resource_id, checkout_time, due_time) VALUES (?, ?, NOW(), ?)',
-      [student_id, resource_id, dueDate]
-    );
-    
-    // Update resource status
-    await pool.query(
-      'UPDATE resources SET status = ? WHERE resource_id = ?',
-      ['borrowed', resource_id]
-    );
-    
-    res.status(201).json({ message: 'Resource checked out successfully' });
+    res.status(201).json({ 
+      message: 'Resource checked out successfully',
+      transaction_id: result.transaction_id
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.message === 'Resource is not available' ? 400 : 500)
+      .json({ message: error.message || 'Server error' });
   }
 });
+
 
 // Return a resource
 router.post('/return', async (req, res) => {
