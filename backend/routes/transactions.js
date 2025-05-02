@@ -209,38 +209,69 @@ router.post('/checkout', async (req, res) => {
 
 
 // Return a resource
+// Update in backend/routes/transactions.js
 router.post('/return', async (req, res) => {
   try {
     const { transaction_id } = req.body;
     
-    // Get transaction details
-    const [transactions] = await pool.query(
-      'SELECT * FROM transactions WHERE transaction_id = ? AND return_time IS NULL',
-      [transaction_id]
-    );
+    await withTransaction(async (connection) => {
+      // Lock the transaction row and get resource_id from transaction_mapping
+      const [transactions] = await connection.query(`
+        SELECT t.transaction_id, tm.resource_id 
+        FROM transactions t
+        JOIN transaction_mapping tm ON t.transaction_id = tm.transaction_id
+        WHERE t.transaction_id = ? AND t.return_time IS NULL FOR UPDATE`,
+        [transaction_id]
+      );
+      
+      if (transactions.length === 0) {
+        throw new Error('Transaction not found or resource already returned');
+      }
+      
+      const resource_id = transactions[0].resource_id;
+      
+      // Update transaction with return time
+      await connection.query(
+        'UPDATE transactions SET return_time = NOW() WHERE transaction_id = ?',
+        [transaction_id]
+      );
+      
+      // Check if overdue and calculate fine if needed
+      const [overdueCheck] = await connection.query(
+        'SELECT DATEDIFF(NOW(), due_time) as days_overdue FROM transactions WHERE transaction_id = ?',
+        [transaction_id]
+      );
+      
+      if (overdueCheck[0].days_overdue > 0) {
+        // Get resource type to determine fine rate
+        const [resourceInfo] = await connection.query(
+          'SELECT type FROM resources WHERE resource_id = ?',
+          [resource_id]
+        );
+        
+        // Get fine rate for this resource type
+        const [rateInfo] = await connection.query(
+          'SELECT rate_id, daily_rate FROM fine_rates WHERE resource_type = ? ' +
+          'ORDER BY effective_date DESC LIMIT 1',
+          [resourceInfo[0].type]
+        );
+        
+        const fine_amount = overdueCheck[0].days_overdue * rateInfo[0].daily_rate;
+        
+        // Create fine record
+        await connection.query(
+          'INSERT INTO fines (transaction_id, amount, reason, status, issue_date, rate_id) ' +
+          'VALUES (?, ?, ?, ?, NOW(), ?)',
+          [transaction_id, fine_amount, 'Overdue return', 'unpaid', rateInfo[0].rate_id]
+        );
+      }
+    });
     
-    if (transactions.length === 0) {
-      return res.status(404).json({ message: 'Transaction not found or already returned' });
-    }
-    
-    const transaction = transactions[0];
-    
-    // Update transaction
-    await pool.query(
-      'UPDATE transactions SET return_time = NOW() WHERE transaction_id = ?',
-      [transaction_id]
-    );
-    
-    // Update resource status
-    await pool.query(
-      'UPDATE resources SET status = ? WHERE resource_id = ?',
-      ['available', transaction.resource_id]
-    );
-    
-    res.json({ message: 'Resource returned successfully' });
+    res.status(200).json({ message: 'Resource returned successfully' });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: 'Server error' });
+    res.status(error.message.includes('not found') ? 404 : 500)
+      .json({ message: error.message || 'Server error' });
   }
 });
 
