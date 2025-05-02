@@ -180,6 +180,7 @@ router.post('/checkout', async (req, res) => {
 
 // Return a resource
 // Update in backend/routes/transactions.js
+// backend/routes/transactions.js (update the return route)
 router.post('/return', async (req, res) => {
   try {
     const { transaction_id } = req.body;
@@ -187,9 +188,10 @@ router.post('/return', async (req, res) => {
     await withTransaction(async (connection) => {
       // Lock the transaction row and get resource_id from transaction_mapping
       const [transactions] = await connection.query(`
-        SELECT t.transaction_id, tm.resource_id 
+        SELECT t.transaction_id, t.due_time, tm.resource_id, tm.student_id, r.type 
         FROM transactions t
         JOIN transaction_mapping tm ON t.transaction_id = tm.transaction_id
+        JOIN resources r ON tm.resource_id = r.resource_id
         WHERE t.transaction_id = ? AND t.return_time IS NULL FOR UPDATE`,
         [transaction_id]
       );
@@ -198,43 +200,56 @@ router.post('/return', async (req, res) => {
         throw new Error('Transaction not found or resource already returned');
       }
       
-      const resource_id = transactions[0].resource_id;
+      const transaction = transactions[0];
       
       // Update transaction with return time
+      const now = new Date();
       await connection.query(
-        'UPDATE transactions SET return_time = NOW() WHERE transaction_id = ?',
-        [transaction_id]
+        'UPDATE transactions SET return_time = ? WHERE transaction_id = ?',
+        [now, transaction_id]
       );
       
-      // Check if overdue and calculate fine if needed
-      const [overdueCheck] = await connection.query(
-        'SELECT DATEDIFF(NOW(), due_time) as days_overdue FROM transactions WHERE transaction_id = ?',
-        [transaction_id]
+      // Update resource status
+      await connection.query(
+        'UPDATE resources SET status = ? WHERE resource_id = ?',
+        ['available', transaction.resource_id]
       );
       
-      if (overdueCheck[0].days_overdue > 0) {
-        // Get resource type to determine fine rate
-        const [resourceInfo] = await connection.query(
-          'SELECT type FROM resources WHERE resource_id = ?',
-          [resource_id]
-        );
+      // Check if overdue and calculate fine
+      const dueTime = new Date(transaction.due_time);
+      if (now > dueTime) {
+        // Calculate days overdue
+        const daysOverdue = Math.ceil((now - dueTime) / (1000 * 60 * 60 * 24));
         
         // Get fine rate for this resource type
         const [rateInfo] = await connection.query(
-          'SELECT rate_id, daily_rate FROM fine_rates WHERE resource_type = ? ' +
-          'ORDER BY effective_date DESC LIMIT 1',
-          [resourceInfo[0].type]
+          'SELECT rate_id, daily_rate FROM fine_rates WHERE resource_type = ? ORDER BY effective_date DESC LIMIT 1',
+          [transaction.type]
         );
         
-        const fine_amount = overdueCheck[0].days_overdue * rateInfo[0].daily_rate;
-        
-        // Create fine record
-        await connection.query(
-          'INSERT INTO fines (transaction_id, amount, reason, status, issue_date, rate_id) ' +
-          'VALUES (?, ?, ?, ?, NOW(), ?)',
-          [transaction_id, fine_amount, 'Overdue return', 'unpaid', rateInfo[0].rate_id]
-        );
+        if (rateInfo.length > 0) {
+          const dailyRate = rateInfo[0].daily_rate;
+          const fineAmount = daysOverdue * dailyRate;
+          
+          // Create fine record
+          await connection.query(
+            'INSERT INTO fines (transaction_id, amount, reason, status, issue_date, rate_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [
+              transaction_id, 
+              fineAmount, 
+              'overdue', 
+              'pending', 
+              now, 
+              rateInfo[0].rate_id,
+              `Returned ${daysOverdue} days late`
+            ]
+          );
+          
+          return { fineCreated: true, amount: fineAmount, daysOverdue };
+        }
       }
+      
+      return { fineCreated: false };
     });
     
     res.status(200).json({ message: 'Resource returned successfully' });
@@ -244,6 +259,7 @@ router.post('/return', async (req, res) => {
       .json({ message: error.message || 'Server error' });
   }
 });
+
 
 router.get('/student/:id', async (req, res) => {
   try {
