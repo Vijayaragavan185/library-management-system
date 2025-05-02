@@ -914,8 +914,43 @@ textarea:focus {
   padding: 1.5rem;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 }
+/* Add this to your CSS file */
+.form-group {
+  margin-bottom: 1rem;
+}
+
 .field-error {
   color: #d9534f;
   font-size: 0.85rem;
   margin-top: 0.25rem;
+}
+
+.error-message {
+  background-color: #f8d7da;
+  color: #721c24;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #f5c6cb;
+  border-radius: 0.25rem;
+}
+
+.success-message {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border: 1px solid #c3e6cb;
+  border-radius: 0.25rem;
+}
+
+input:invalid, select:invalid {
+  border-color: #dc3545;
+}
+
+input:focus:invalid, select:focus:invalid {
+  box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+input.valid, select.valid {
+  border-color: #28a745;
 }
