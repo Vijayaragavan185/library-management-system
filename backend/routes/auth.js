@@ -253,23 +253,127 @@ router.get('/me', async (req, res) => {
 });
 // backend/routes/auth.js - Add this registration route
 // Improved error handling for the registration route
+// router.post('/register', async (req, res) => {
+//   try {
+//     const { student_id, name, email, department, username, password } = req.body;
+    
+//     console.log('Registration attempt with data:', { student_id, name, email, department, username });
+    
+//     // Validate required fields
+//     if (!student_id || !name || !email || !department || !username || !password) {
+//       return res.status(400).json({ 
+//         message: 'All fields are required',
+//         missing: Object.entries({ student_id, name, email, department, username, password })
+//           .filter(([_, value]) => !value)
+//           .map(([key]) => key)
+//       });
+//     }
+    
+//     // Check if student_id already exists
+//     const [existingStudents] = await pool.query(
+//       'SELECT * FROM students WHERE student_id = ?',
+//       [student_id]
+//     );
+    
+//     if (existingStudents.length > 0) {
+//       return res.status(400).json({ message: 'Student ID already registered' });
+//     }
+    
+//     // Check if username already exists
+//     const [existingUsers] = await pool.query(
+//       'SELECT * FROM user_accounts WHERE username = ?',
+//       [username]
+//     );
+    
+//     if (existingUsers.length > 0) {
+//       return res.status(400).json({ message: 'Username already taken' });
+//     }
+    
+//     // Create student record
+//     await pool.query(
+//       'INSERT INTO students (student_id, name, department, email, status) VALUES (?, ?, ?, ?, ?)',
+//       [student_id, name, department, email, 'pending']
+//     );
+    
+//     // Hash password
+//     const salt = await bcrypt.genSalt(10);
+//     const passwordHash = await bcrypt.hash(password, salt);
+    
+//     // Create user account
+//     await pool.query(
+//       'INSERT INTO user_accounts (student_id, username, password_hash, role) VALUES (?, ?, ?, ?)',
+//       [student_id, username, passwordHash, 'student']
+//     );
+    
+//     console.log(`Registration successful for student: ${student_id}, username: ${username}`);
+    
+//     res.status(201).json({ 
+//       message: 'Registration successful. Please wait for admin approval.' 
+//     });
+    
+//   } catch (error) {
+//     console.error('Registration error details:', error.message, error.stack);
+    
+//     // Check for specific MySQL errors
+//     if (error.code === 'ER_DUP_ENTRY') {
+//       return res.status(400).json({ message: 'A user with this ID or username already exists' });
+//     }
+    
+//     res.status(500).json({ 
+//       message: 'Server error during registration',
+//       details: process.env.NODE_ENV === 'development' ? error.message : undefined
+//     });
+//   }
+// });
+// Enhanced backend validation in auth.js
 router.post('/register', async (req, res) => {
   try {
-    const { student_id, name, email, department, username, password } = req.body;
+    const { student_id, name, email, department, phone, username, password } = req.body;
     
-    console.log('Registration attempt with data:', { student_id, name, email, department, username });
-    
-    // Validate required fields
-    if (!student_id || !name || !email || !department || !username || !password) {
+    // Enhanced validation
+    // Student ID validation
+    if (!/^[A-Z0-9]+$/.test(student_id)) {
       return res.status(400).json({ 
-        message: 'All fields are required',
-        missing: Object.entries({ student_id, name, email, department, username, password })
-          .filter(([_, value]) => !value)
-          .map(([key]) => key)
+        message: 'Invalid student ID format. Use only uppercase letters and numbers.' 
       });
     }
     
-    // Check if student_id already exists
+    // Name validation
+    if (!/^[A-Za-z\s-]+$/.test(name) || name.length < 2) {
+      return res.status(400).json({ 
+        message: 'Invalid name format. Use only letters, spaces, and hyphens.' 
+      });
+    }
+    
+    // Email validation
+    if (!/^\S+@\S+\.\S+$/.test(email)) {
+      return res.status(400).json({ 
+        message: 'Invalid email address format.' 
+      });
+    }
+    
+    // Phone validation (if provided)
+    if (phone && !/^\d{10,15}$/.test(phone)) {
+      return res.status(400).json({ 
+        message: 'Phone number must contain 10-15 digits only.' 
+      });
+    }
+    
+    // Username validation
+    if (!/^[a-zA-Z0-9]{5,20}$/.test(username)) {
+      return res.status(400).json({ 
+        message: 'Username must be 5-20 alphanumeric characters.' 
+      });
+    }
+    
+    // Password strength validation
+    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/.test(password)) {
+      return res.status(400).json({ 
+        message: 'Password must be at least 8 characters with at least one letter, one number, and one special character.' 
+      });
+    }
+
+    // Existing validation logic for duplicate checks
     const [existingStudents] = await pool.query(
       'SELECT * FROM students WHERE student_id = ?',
       [student_id]
@@ -291,8 +395,8 @@ router.post('/register', async (req, res) => {
     
     // Create student record
     await pool.query(
-      'INSERT INTO students (student_id, name, department, email, status) VALUES (?, ?, ?, ?, ?)',
-      [student_id, name, department, email, 'pending']
+      'INSERT INTO students (student_id, name, department, email, phone, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [student_id, name, department, email, phone || null, 'pending']
     );
     
     // Hash password
@@ -305,24 +409,13 @@ router.post('/register', async (req, res) => {
       [student_id, username, passwordHash, 'student']
     );
     
-    console.log(`Registration successful for student: ${student_id}, username: ${username}`);
-    
-    res.status(201).json({ 
-      message: 'Registration successful. Please wait for admin approval.' 
+    res.status(201).json({
+      message: 'Registration successful. Please wait for admin approval.'
     });
     
   } catch (error) {
-    console.error('Registration error details:', error.message, error.stack);
-    
-    // Check for specific MySQL errors
-    if (error.code === 'ER_DUP_ENTRY') {
-      return res.status(400).json({ message: 'A user with this ID or username already exists' });
-    }
-    
-    res.status(500).json({ 
-      message: 'Server error during registration',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    console.error('Registration error:', error);
+    res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
