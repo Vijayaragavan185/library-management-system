@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../config/db');
+const { withTransaction } = require('../utils/transactionHelper');
 
 // Get all transactions
 router.get('/', async (req, res) => {
@@ -22,97 +23,6 @@ router.get('/', async (req, res) => {
 });
 
 // Check out a resource
-// router.post('/checkout', async (req, res) => {
-//   try {
-//     const { student_id, resource_id, due_days = 14 } = req.body;
-    
-//     // Check if resource is available
-//     const [resources] = await pool.query(
-//       'SELECT * FROM resources WHERE resource_id = ? AND status = ?',
-//       [resource_id, 'available']
-//     );
-    
-//     if (resources.length === 0) {
-//       return res.status(400).json({ message: 'Resource is not available' });
-//     }
-    
-//     // Create transaction
-//     const dueDate = new Date();
-//     dueDate.setDate(dueDate.getDate() + due_days);
-    
-//     await pool.query(
-//       'INSERT INTO transactions (student_id, resource_id, checkout_time, due_time) VALUES (?, ?, NOW(), ?)',
-//       [student_id, resource_id, dueDate]
-//     );
-    
-//     // Update resource status
-//     await pool.query(
-//       'UPDATE resources SET status = ? WHERE resource_id = ?',
-//       ['borrowed', resource_id]
-//     );
-    
-//     res.status(201).json({ message: 'Resource checked out successfully' });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(500).json({ message: 'Server error' });
-//   }
-// });
-const { withTransaction } = require('../utils/transactionHelper');
-
-// Check out a resource
-// router.post('/checkout', async (req, res) => {
-//   try {
-//     const { student_id, resource_id, due_days = 14 } = req.body;
-    
-//     const result = await withTransaction(async (connection) => {
-//       // Check if resource is available (with FOR UPDATE to lock the row)
-//       const [resources] = await connection.query(
-//         'SELECT * FROM resources WHERE resource_id = ? AND status = ? FOR UPDATE',
-//         [resource_id, 'available']
-//       );
-      
-//       if (resources.length === 0) {
-//         throw new Error('Resource is not available');
-//       }
-      
-//       // Create transaction
-//       const dueDate = new Date();
-//       dueDate.setDate(dueDate.getDate() + due_days);
-      
-//       // Insert transaction record and get the ID
-//       const [transactionResult] = await connection.query(
-//         'INSERT INTO transactions (due_time) VALUES (?)',
-//         [dueDate]
-//       );
-      
-//       const transaction_id = transactionResult.insertId;
-      
-//       // Create mapping entry
-//       await connection.query(
-//         'INSERT INTO transaction_mapping (student_id, resource_id, checkout_time, transaction_id) VALUES (?, ?, NOW(), ?)',
-//         [student_id, resource_id, transaction_id]
-//       );
-      
-//       // Update resource status
-//       await connection.query(
-//         'UPDATE resources SET status = ? WHERE resource_id = ?',
-//         ['borrowed', resource_id]
-//       );
-      
-//       return { transaction_id };
-//     });
-    
-//     res.status(201).json({ 
-//       message: 'Resource checked out successfully',
-//       transaction_id: result.transaction_id
-//     });
-//   } catch (error) {
-//     console.error(error);
-//     res.status(error.message === 'Resource is not available' ? 400 : 500)
-//       .json({ message: error.message || 'Server error' });
-//   }
-// });
-// Backend routes/transactions.js - Update the checkout route
 router.post('/checkout', async (req, res) => {
   try {
     const { student_id, resource_id, due_days = 14 } = req.body;
@@ -163,6 +73,12 @@ router.post('/checkout', async (req, res) => {
         [student_id, resource_id, transaction_id]
       );
       
+      // Update resource status
+      await connection.query(
+        'UPDATE resources SET status = ? WHERE resource_id = ?',
+        ['borrowed', resource_id]
+      );
+      
       return { transaction_id };
     });
     
@@ -176,11 +92,7 @@ router.post('/checkout', async (req, res) => {
   }
 });
 
-
-
-// Return a resource
-// Update in backend/routes/transactions.js
-// backend/routes/transactions.js (update the return route)
+// Return a resource - Updated for BCNF structure
 router.post('/return', async (req, res) => {
   try {
     const { transaction_id } = req.body;
@@ -231,17 +143,25 @@ router.post('/return', async (req, res) => {
           const dailyRate = rateInfo[0].daily_rate;
           const fineAmount = daysOverdue * dailyRate;
           
-          // Create fine record
+          // Insert into fines table (without amount and reason)
           await connection.query(
-            'INSERT INTO fines (transaction_id, amount, reason, status, issue_date, rate_id, notes) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO fines (transaction_id, status, issue_date, rate_id, notes) VALUES (?, ?, ?, ?, ?)',
             [
               transaction_id, 
-              fineAmount, 
-              'overdue', 
               'pending', 
               now, 
               rateInfo[0].rate_id,
               `Returned ${daysOverdue} days late`
+            ]
+          );
+          
+          // Insert into fine_details table with amount and reason
+          await connection.query(
+            'INSERT INTO fine_details (transaction_id, amount, reason) VALUES (?, ?, ?)',
+            [
+              transaction_id, 
+              fineAmount, 
+              'overdue'
             ]
           );
           
@@ -260,7 +180,7 @@ router.post('/return', async (req, res) => {
   }
 });
 
-
+// Get transactions by student ID
 router.get('/student/:id', async (req, res) => {
   try {
     const [transactions] = await pool.query(`
