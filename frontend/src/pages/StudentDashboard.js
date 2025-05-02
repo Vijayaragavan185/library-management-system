@@ -9,30 +9,46 @@ const StudentDashboard = () => {
   const [fines, setFines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [returningId, setReturningId] = useState(null);
   const currentUser = AuthService.getCurrentUser();
 
-  useEffect(() => {
-    const fetchStudentData = async () => {
-      try {
-        setLoading(true);
-        const [checkoutsRes, finesRes] = await Promise.all([
-          api.get(`/transactions/student/${currentUser.student_id}`),
-          api.get(`/fines/student/${currentUser.student_id}`)
-        ]);
-        
-        setCheckouts(checkoutsRes.data);
-        setFines(finesRes.data);
-        setError(null);
-      } catch (err) {
-        setError('Failed to load your data');
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStudentData = async () => {
+    try {
+      setLoading(true);
+      const [checkoutsRes, finesRes] = await Promise.all([
+        api.get(`/transactions/student/${currentUser.student_id}`),
+        api.get(`/fines/student/${currentUser.student_id}`)
+      ]);
+      
+      setCheckouts(checkoutsRes.data);
+      setFines(finesRes.data);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load your data');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStudentData();
   }, [currentUser.student_id]);
+
+  // Handle return functionality
+  const handleReturn = async (transactionId) => {
+    try {
+      setReturningId(transactionId);
+      await api.post('/transactions/return', { transaction_id: transactionId });
+      // Refresh data after successful return
+      await fetchStudentData();
+    } catch (err) {
+      setError('Failed to return resource. Please try again or contact librarian.');
+      console.error(err);
+    } finally {
+      setReturningId(null);
+    }
+  };
 
   // Format date function
   const formatDate = (dateString) => {
@@ -48,7 +64,7 @@ const StudentDashboard = () => {
     return total;
   }, 0).toFixed(2);
 
-  if (loading) return <StudentLayout><div>Loading your information...</div></StudentLayout>;
+  if (loading && !returningId) return <StudentLayout><div>Loading your information...</div></StudentLayout>;
   if (error) return <StudentLayout><div className="error-message">{error}</div></StudentLayout>;
 
   return (
@@ -89,6 +105,7 @@ const StudentDashboard = () => {
                   <th>Checkout Date</th>
                   <th>Due Date</th>
                   <th>Status</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -105,6 +122,15 @@ const StudentDashboard = () => {
                         ) : (
                           <span className="status-badge borrowed">Borrowed</span>
                         )}
+                      </td>
+                      <td>
+                        <button 
+                          className="btn-return"
+                          onClick={() => handleReturn(checkout.transaction_id)}
+                          disabled={returningId === checkout.transaction_id}
+                        >
+                          {returningId === checkout.transaction_id ? 'Returning...' : 'Return'}
+                        </button>
                       </td>
                     </tr>
                   ))}

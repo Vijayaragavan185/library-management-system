@@ -1,6 +1,7 @@
 // src/pages/student/BrowseResources.js
 import React, { useState, useEffect } from 'react';
 import StudentLayout from '../../components/layout/StudentLayout';
+import ResourceCard from '../../components/resources/ResourceCard'; // Import ResourceCard
 import api from '../../services/api';
 
 const BrowseResources = () => {
@@ -13,6 +14,7 @@ const BrowseResources = () => {
     category: '',
     type: ''
   });
+  const [refreshTrigger, setRefreshTrigger] = useState(false); // Add refresh trigger
 
   useEffect(() => {
     const fetchData = async () => {
@@ -35,7 +37,7 @@ const BrowseResources = () => {
     };
 
     fetchData();
-  }, []);
+  }, [refreshTrigger]); // Add refreshTrigger as dependency
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -51,6 +53,11 @@ const BrowseResources = () => {
       category: '',
       type: ''
     });
+  };
+
+  // Handle refresh after checkout
+  const handleRefresh = () => {
+    setRefreshTrigger(prev => !prev);
   };
 
   // Filter resources based on user-selected filters
@@ -120,17 +127,11 @@ const BrowseResources = () => {
             <p className="no-results">No resources found matching your filters.</p>
           ) : (
             filteredResources.map(resource => (
-              <div key={resource.resource_id} className="resource-card">
-                <div className="resource-type-badge">{resource.type}</div>
-                <h3>{resource.title}</h3>
-                <p className="resource-id">ID: {resource.resource_id}</p>
-                <p className="resource-location">Location: {resource.location_code}</p>
-                <div className="resource-footer">
-                  <span className={`status-badge ${resource.status}`}>
-                    {resource.status}
-                  </span>
-                </div>
-              </div>
+              <ResourceCard 
+                key={resource.resource_id} 
+                resource={resource} 
+                onRefresh={handleRefresh}
+              />
             ))
           )}
         </div>

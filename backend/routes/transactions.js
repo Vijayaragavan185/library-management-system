@@ -112,22 +112,14 @@ const { withTransaction } = require('../utils/transactionHelper');
 //       .json({ message: error.message || 'Server error' });
 //   }
 // });
+// Backend routes/transactions.js - Update the checkout route
 router.post('/checkout', async (req, res) => {
   try {
     const { student_id, resource_id, due_days = 14 } = req.body;
     
-    // Input validation
+    // Validation
     if (!student_id || !resource_id) {
-      return res.status(400).json({ 
-        message: 'Student ID and Resource ID are required' 
-      });
-    }
-    
-    // Validate due_days is a reasonable number
-    if (isNaN(due_days) || due_days < 1 || due_days > 60) {
-      return res.status(400).json({ 
-        message: 'Due days must be between 1 and 60' 
-      });
+      return res.status(400).json({ message: 'Student ID and Resource ID are required' });
     }
     
     // Check if student exists and is active
@@ -137,43 +129,27 @@ router.post('/checkout', async (req, res) => {
     );
     
     if (students.length === 0) {
-      return res.status(400).json({ 
-        message: 'Student not found or not active' 
-      });
+      return res.status(400).json({ message: 'Student not found or not active' });
     }
     
-    // Check if student has any unpaid fines
-    const [fines] = await pool.query(`
-      SELECT SUM(f.amount) as total_unpaid
-      FROM fines f
-      JOIN transactions t ON f.transaction_id = t.transaction_id
+    // Check if resource already checked out
+    const [activeCheckouts] = await pool.query(`
+      SELECT t.transaction_id 
+      FROM transactions t
       JOIN transaction_mapping tm ON t.transaction_id = tm.transaction_id
-      WHERE tm.student_id = ? AND f.status = 'unpaid'
-    `, [student_id]);
+      WHERE tm.resource_id = ? AND t.return_time IS NULL
+    `, [resource_id]);
     
-    if (fines[0].total_unpaid > 0) {
-      return res.status(400).json({ 
-        message: 'Cannot checkout resource. Student has unpaid fines.' 
-      });
+    if (activeCheckouts.length > 0) {
+      return res.status(400).json({ message: 'Resource is already checked out' });
     }
     
-    // Continue with the existing transaction process
+    // Process checkout with transaction
     const result = await withTransaction(async (connection) => {
-      // Lock the resource row while checking availability
-      const [resources] = await connection.query(
-        'SELECT * FROM resources WHERE resource_id = ? AND status = ? FOR UPDATE',
-        [resource_id, 'available']
-      );
-      
-      if (resources.length === 0) {
-        throw new Error('Resource is not available');
-      }
-      
-      // Create transaction
+      // Create transaction record
       const dueDate = new Date();
-      dueDate.setDate(dueDate.getDate() + due_days);
+      dueDate.setDate(dueDate.getDate() + parseInt(due_days));
       
-      // Insert transaction record and get the ID
       const [transactionResult] = await connection.query(
         'INSERT INTO transactions (due_time) VALUES (?)',
         [dueDate]
@@ -187,12 +163,6 @@ router.post('/checkout', async (req, res) => {
         [student_id, resource_id, transaction_id]
       );
       
-      // Update resource status
-      await connection.query(
-        'UPDATE resources SET status = ? WHERE resource_id = ?',
-        ['borrowed', resource_id]
-      );
-      
       return { transaction_id };
     });
     
@@ -202,10 +172,10 @@ router.post('/checkout', async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(error.message === 'Resource is not available' ? 400 : 500)
-      .json({ message: error.message || 'Server error' });
+    res.status(500).json({ message: error.message || 'Server error' });
   }
 });
+
 
 
 // Return a resource
